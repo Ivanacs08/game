@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block & Blade</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --night-stone: #182020;
+      --castle-stone: #59635d;
+      --old-gold: #c4a363;
+      --parchment: #eee6d2;
+      font-family: Georgia, "Times New Roman", serif;
+      background: var(--night-stone);
+      color: var(--parchment);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(ellipse at 50% 42%, #39443e 0%, #242d2b 48%, var(--night-stone) 100%);
+    }
+
+    .game-shell { width: min(100%, 960px); }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      padding: 0 2px 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(24px, 5vw, 34px);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 5px 0 0;
+      color: #b9b8a7;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .status {
+      color: #e4d9bf;
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .arena-frame {
+      position: relative;
+      overflow: hidden;
+      border: 2px solid #9a895f;
+      border-radius: 5px;
+      background: var(--castle-stone);
+      box-shadow: 0 24px 70px #080d0a99, 0 2px 0 #e5d2a333 inset;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 960 / 600;
+      outline: none;
+    }
+
+    .menu-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow-y: auto;
+      background: #171d1de3;
+      text-align: center;
+    }
+
+    .menu-panel { width: min(100%, 560px); }
+    .menu-panel[hidden] { display: none; }
+    .menu-overlay[hidden] { display: none; }
+
+    .menu-eyebrow {
+      margin: 0 0 10px;
+      color: var(--old-gold);
+      font-size: 11px;
+      letter-spacing: 0;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .menu-title {
+      margin: 0;
+      font: 700 clamp(34px, 7vw, 54px) Georgia, "Times New Roman", serif;
+    }
+
+    .menu-copy {
+      margin: 12px 0 26px;
+      color: #d0c9b7;
+      font-size: 13px;
+      line-height: 1.6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .menu-button, .difficulty-option, .back-button {
+      border: 1px solid #897b5a;
+      border-radius: 5px;
+      color: var(--parchment);
+      background: #303b38;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .menu-button {
+      min-width: 170px;
+      padding: 13px 24px;
+      border-color: var(--old-gold);
+      color: #222725;
+      background: var(--old-gold);
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .menu-button:hover { background: #ddc27e; }
+
+    .difficulty-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .difficulty-option {
+      display: grid;
+      justify-items: start;
+      gap: 9px;
+      min-height: 112px;
+      padding: 14px;
+      text-align: left;
+      transition: border-color 150ms ease, background-color 150ms ease;
+    }
+
+    .difficulty-option:hover, .difficulty-option:focus-visible {
+      border-color: #d9bc77;
+      background: #424b43;
+    }
+
+    .difficulty-option strong { font-size: 14px; }
+    .difficulty-option small { color: #c9c4b3; font-size: 11px; }
+
+    .shop-items {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 18px;
+    }
+
+    .shop-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #897b5a;
+      border-radius: 5px;
+      color: var(--parchment);
+      background: #303b38;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .shop-item:hover:not(:disabled) { border-color: #d9bc77; background: #424b43; }
+    .shop-item:disabled { opacity: 0.55; cursor: not-allowed; }
+    .shop-item small { color: #c9c4b3; font-size: 11px; }
+
+    .back-button {
+      margin-bottom: 18px;
+      padding: 7px 11px;
+      color: #e0d6c0;
+      font-size: 12px;
+    }
+
+    .back-button:hover { background: #424b43; }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      padding: 12px 2px 0;
+      color: #b9b8a7;
+      font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    kbd {
+      padding: 3px 6px;
+      border: 1px solid #716e5b;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      color: var(--parchment);
+      background: #303b38;
+      font: inherit;
+    }
+
+    @media (max-width: 560px) {
+      body { padding: 14px; }
+      header { align-items: start; flex-direction: column; }
+      .status { text-align: left; }
+      footer { font-size: 11px; }
+      .menu-overlay { place-items: start center; padding: 14px; }
+      .difficulty-options { grid-template-columns: 1fr; gap: 7px; }
+      .difficulty-option { grid-template-columns: 1fr auto; align-items: center; min-height: 56px; }
+      .difficulty-option small { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <header>
+      <div>
+        <h1>Block &amp; Blade</h1>
+        <p class="subtitle">Castle courtyard duel</p>
+      </div>
+        <div class="status" id="status" aria-live="polite">Enter the castle courtyard.</div>
+    </header>
+    <div class="arena-frame">
+      <canvas id="game" width="960" height="600" tabindex="0" aria-label="Block and Blade castle courtyard"></canvas>
+      <section class="menu-overlay" id="menu" aria-live="polite">
+        <div class="menu-panel" id="titleScreen">
+          <p class="menu-eyebrow">THE CASTLE COURTYARD</p>
+          <h2 class="menu-title">Block &amp; Blade</h2>
+          <p class="menu-copy">Claim the shield. Defend the keep.</p>
+          <button class="menu-button" id="playButton" type="button">PLAY</button>
+        </div>
+        <div class="menu-panel" id="difficultyScreen" hidden>
+          <button class="back-button" id="backButton" type="button">Back</button>
+          <p class="menu-eyebrow">CHOOSE YOUR CHALLENGE</p>
+          <h2 class="menu-title">Difficulty</h2>
+          <p class="menu-copy">Higher levels bring more rivals and more damage.</p>
+          <div class="difficulty-options">
+            <button class="difficulty-option" type="button" data-damage="1" data-count="1" data-name="Easy" data-minutes="5">
+              <strong>Level I · Easy</strong><small>1 knight | 5 minutes</small>
+            </button>
+            <button class="difficulty-option" type="button" data-damage="2" data-count="2" data-name="Normal" data-minutes="6">
+              <strong>Level II · Normal</strong><small>Knight + scout | 6 minutes</small>
+            </button>
+            <button class="difficulty-option" type="button" data-damage="3" data-count="3" data-name="Hard" data-minutes="7">
+              <strong>Level III · Hard</strong><small>3 foes | 7 minutes</small>
+            </button>
+          </div>
+        </div>
+        <div class="menu-panel" id="shopScreen" hidden>
+          <p class="menu-eyebrow">CASTLE TRADING POST</p>
+          <h2 class="menu-title" id="shopTitle">Merchant</h2>
+          <p class="menu-copy" id="shopBalance">Coins: 0</p>
+          <div class="shop-items" id="shopItems"></div>
+          <button class="back-button" id="leaveShopButton" type="button">Leave shop</button>
+        </div>
+        <div class="menu-panel" id="stageScreen" hidden>
+          <p class="menu-eyebrow">CAMPAIGN PROGRESS</p>
+          <h2 class="menu-title" id="stageTitle">Level survived</h2>
+          <p class="menu-copy" id="stageCopy"></p>
+          <button class="menu-button" id="stageContinueButton" type="button">CONTINUE</button>
+        </div>
+      </section>
+    </div>
+    <footer>
+      <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move</span>
+      <span><kbd>Space</kbd> swing sword</span>
+      <span><kbd>F</kbd> block (not while swinging)</span>
+      <span><kbd>E</kbd> trade near a merchant</span>
+      <span><kbd>R</kbd> restart after a duel</span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const context = canvas.getContext("2d");
+      const status = document.getElementById("status");
+      const menu = document.getElementById("menu");
+      const titleScreen = document.getElementById("titleScreen");
+      const difficultyScreen = document.getElementById("difficultyScreen");
+      const playButton = document.getElementById("playButton");
+      const backButton = document.getElementById("backButton");
+      const shopScreen = document.getElementById("shopScreen");
+      const stageScreen = document.getElementById("stageScreen");
+      const stageTitle = document.getElementById("stageTitle");
+      const stageCopy = document.getElementById("stageCopy");
+      const stageContinueButton = document.getElementById("stageContinueButton");
+      const shopTitle = document.getElementById("shopTitle");
+      const shopBalance = document.getElementById("shopBalance");
+      const shopItems = document.getElementById("shopItems");
+      const leaveShopButton = document.getElementById("leaveShopButton");
+      const width = canvas.width;
+      const height = canvas.height;
+      const bounds = { left: 40, top: 40, right: 1460, bottom: 910 };
+      const camera = { x: bounds.left, y: bounds.top };
+      const stageMaps = {
+        1: { width: 1500, height: 950 },
+        2: { width: 1850, height: 1200 },
+        3: { width: 2200, height: 1450 }
+      };
+      const keys = new Set();
+      const obstacles = [];
+      const merchants = [];
+      const coinDrops = [];
+      const crate = { x: 0, y: 0, width: 56, height: 56, hp: 3, broken: false, flash: 0 };
+      const shieldPickup = { x: 0, y: 0 };
+      const player = { x: 300, y: 300, size: 34, speed: 245, hp: 5, maxHp: 5, faceX: 1, faceY: 0, hurt: 0, swing: 0, swingCooldown: 0, swingHit: false };
+      const siege = { mode: "idle", timer: 0, axis: "x", center: 0 };
+      const rivals = [];
+      const rivalSpawns = {
+        1: [{ x: 650, y: 300 }],
+        2: [{ x: 690, y: 230 }, { x: 690, y: 370 }],
+        3: [{ x: 700, y: 185 }, { x: 710, y: 300 }, { x: 700, y: 415 }]
+      };
+      const rivalColors = [
+        { color: "#d2a94e", highlight: "#f0ce79" },
+        { color: "#bd8550", highlight: "#e7b878" },
+        { color: "#aeb86d", highlight: "#d3d98d" }
+      ];
+      const rivalTypes = [
+        { role: "Knight", size: 38, speed: 104, maxHp: 6, approachRange: 78, attackRange: 78, windupDuration: 0.52, initialCooldown: 0.8, recovery: 1.05, damageBonus: 0 },
+        { role: "Scout", size: 32, speed: 148, maxHp: 4, approachRange: 66, attackRange: 68, windupDuration: 0.34, initialCooldown: 0.55, recovery: 0.74, damageBonus: 0 },
+        { role: "Brute", size: 46, speed: 82, maxHp: 9, approachRange: 94, attackRange: 98, windupDuration: 0.78, initialCooldown: 1.15, recovery: 1.45, damageBonus: 1 }
+      ];
+      const weapons = [
+        { name: "Knight's Sword", price: 0, damage: 1, range: 82, cooldown: 0.48 },
+        { name: "Longsword", price: 8, damage: 2, range: 94, cooldown: 0.48 },
+        { name: "War Hammer", price: 14, damage: 3, range: 84, cooldown: 0.64 },
+        { name: "Duelist Rapier", price: 20, damage: 2, range: 112, cooldown: 0.34 }
+      ];
+      let lastTime = 0;
+      let ended = false;
+      let playing = false;
+      let npcDamage = 1;
+      let npcCount = 1;
+      let difficultyName = "Easy";
+      let stageMinutes = 5;
+      let stageIndex = 0;
+      let timeRemaining = 300;
+      let wave = 1;
+      let waveBreak = 0;
+      let coins = 0;
+      let weapon = weapons[0];
+      let shopMerchant = null;
+      let shopOpen = false;
+      let shieldAvailable = false;
+      let hasShield = false;
+      let result = "";
+      let elapsed = 0;
+
+      function reset() {
+        const map = stageMaps[npcCount];
+        bounds.right = map.width - 40;
+        bounds.bottom = map.height - 40;
+        Object.assign(player, { x: 300, y: 300, hp: player.maxHp, faceX: 1, faceY: 0, hurt: 0, swing: 0, swingCooldown: 0, swingHit: false });
+        crate.x = Math.round((bounds.left + bounds.right - crate.width) / 2);
+        crate.y = Math.round((bounds.top + bounds.bottom - crate.height) / 2);
+        shieldPickup.x = crate.x + crate.width / 2;
+        shieldPickup.y = crate.y + crate.height / 2;
+        buildMerchants();
+        buildMap();
+        updateCamera();
+        rivals.length = 0;
+        rivalSpawns[npcCount].forEach((spawn, index) => {
+          const type = rivalTypes[index];
+          rivals.push({
+            ...spawn,
+            ...rivalColors[index],
+            ...type,
+            hp: type.maxHp,
+            hurt: 0,
+            attackCooldown: type.initialCooldown + index * 0.24,
+            windup: 0,
+            attackTime: 0,
+            wanderAngle: 2.4 + index,
+            wanderTimer: 0,
+            landed: false
+          });
+        });
+        Object.assign(crate, { hp: 3, broken: false, flash: 0 });
+        coinDrops.length = 0;
+        Object.assign(siege, { mode: "idle", timer: npcCount === 3 ? 4.2 : 6.5, axis: "x", center: 0 });
+        timeRemaining = stageMinutes * 60;
+        wave = 1;
+        waveBreak = 0;
+        shieldAvailable = false;
+        hasShield = false;
+        shopOpen = false;
+        keys.clear();
+        ended = false;
+        playing = true;
+        result = "";
+        elapsed = 0;
+        status.textContent = `Level ${stageIndex + 1}. Break the center crate for a shield.`;
+        menu.hidden = true;
+        canvas.focus();
+      }
+
+      playButton.addEventListener("click", () => {
+        titleScreen.hidden = true;
+        difficultyScreen.hidden = false;
+        status.textContent = "Choose your difficulty.";
+      });
+
+      backButton.addEventListener("click", () => {
+        difficultyScreen.hidden = true;
+        titleScreen.hidden = false;
+        status.textContent = "Move or swing to begin.";
+      });
+
+      document.querySelectorAll(".difficulty-option").forEach((button) => {
+        button.addEventListener("click", () => {
+          startStage(Number(button.dataset.count) - 1, true);
+        });
+      });
+
+      stageContinueButton.addEventListener("click", () => {
+        if (stageIndex < 2) {
+          startStage(stageIndex + 1, false);
+        } else {
+          startStage(0, true);
+        }
+      });
+
+      leaveShopButton.addEventListener("click", closeShop);
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function normalized(x, y) {
+        const length = Math.hypot(x, y) || 1;
+        return { x: x / length, y: y / length };
+      }
+
+      function distanceBetween(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+      }
+
+      function buildMap() {
+        obstacles.length = 0;
+        let column = 0;
+        for (let x = bounds.left + 160; x < bounds.right - 100; x += 230, column++) {
+          let row = 0;
+          for (let y = bounds.top + 135; y < bounds.bottom - 100; y += 205, row++) {
+            const nearPlayerSpawn = Math.hypot(x - player.x, y - player.y) < 120;
+            const nearCrate = Math.hypot(x - crate.x, y - crate.y) < 125;
+            const nearRivalSpawn = rivalSpawns[npcCount].some((spawn) => Math.hypot(x - spawn.x, y - spawn.y) < 105);
+            const nearMerchant = merchants.some((merchant) => Math.hypot(x - merchant.x, y - merchant.y) < 110);
+            if ((column + row) % 3 === 0 || nearPlayerSpawn || nearCrate || nearRivalSpawn || nearMerchant) continue;
+            obstacles.push({ x, y, width: 58 + (column % 2) * 18, height: 48 + (row % 2) * 18 });
+          }
+        }
+      }
+
+      function buildMerchants() {
+        merchants.length = 0;
+        const centerX = (bounds.left + bounds.right) / 2;
+        const centerY = (bounds.top + bounds.bottom) / 2;
+        merchants.push(
+          { x: bounds.left + 160, y: 300, name: "Gatehouse Smith", size: 40 },
+          { x: centerX, y: bounds.bottom - 145, name: "Abbey Armorer", size: 40 },
+          { x: bounds.right - 160, y: centerY, name: "Roadside Trader", size: 40 }
+        );
+      }
+
+      function updateCamera() {
+        camera.x = clamp(player.x - width / 2, bounds.left, bounds.right - width);
+        camera.y = clamp(player.y - height / 2, bounds.top, bounds.bottom - height);
+      }
+
+      function startStage(index, newCampaign) {
+        stageIndex = index;
+        npcCount = index + 1;
+        npcDamage = index + 1;
+        difficultyName = ["Easy", "Normal", "Hard"][index];
+        stageMinutes = index + 5;
+        if (newCampaign) {
+          coins = 0;
+          weapon = weapons[0];
+        }
+        reset();
+      }
+
+      function refreshShop() {
+        shopTitle.textContent = shopMerchant.name;
+        shopBalance.textContent = `${coins} coins | Equipped: ${weapon.name}`;
+        shopItems.replaceChildren();
+        weapons.slice(1).forEach((item) => {
+          const button = document.createElement("button");
+          button.className = "shop-item";
+          button.type = "button";
+          button.disabled = coins < item.price || weapon === item;
+          const name = document.createElement("strong");
+          name.textContent = item.name;
+          const details = document.createElement("small");
+          details.textContent = `${item.price} coins | ${item.damage} damage | ${item.range} reach`;
+          button.append(name, details);
+          button.addEventListener("click", () => {
+            if (coins < item.price) return;
+            coins -= item.price;
+            weapon = item;
+            status.textContent = `${item.name} equipped.`;
+            refreshShop();
+          });
+          shopItems.append(button);
+        });
+      }
+
+      function openShop() {
+        const nearby = merchants.find((merchant) => distanceBetween(player, merchant) < 112);
+        if (!playing || ended || !nearby) {
+          if (playing && !ended) status.textContent = "Move closer to a smith to trade.";
+          return;
+        }
+        shopMerchant = nearby;
+        shopOpen = true;
+        playing = false;
+        keys.clear();
+        titleScreen.hidden = true;
+        difficultyScreen.hidden = true;
+        stageScreen.hidden = true;
+        shopScreen.hidden = false;
+        menu.hidden = false;
+        refreshShop();
+        status.textContent = `Trading at the ${nearby.name}.`;
+      }
+
+      function closeShop() {
+        if (!shopOpen) return;
+        shopOpen = false;
+        shopScreen.hidden = true;
+        menu.hidden = true;
+        playing = true;
+        status.textContent = `${coins} coins. ${weapon.name} equipped.`;
+        canvas.focus();
+      }
+
+      function dropCoins(rival) {
+        const value = 2 + Math.floor(Math.random() * 3);
+        coinDrops.push({ x: rival.x, y: rival.y, value, bob: Math.random() * Math.PI * 2 });
+        status.textContent = `${rival.role} dropped ${value} coins.`;
+      }
+
+      function formatTime(seconds) {
+        const wholeSeconds = Math.ceil(seconds);
+        return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, "0")}`;
+      }
+
+      function makeRival(index, waveNumber, position) {
+        const typeIndex = (index + waveNumber - 1) % rivalTypes.length;
+        const type = rivalTypes[typeIndex];
+        return {
+          ...position,
+          ...rivalColors[typeIndex],
+          ...type,
+          hp: type.maxHp,
+          hurt: 0,
+          attackCooldown: type.initialCooldown + index * 0.24,
+          windup: 0,
+          attackTime: 0,
+          wanderAngle: 2.4 + index,
+          wanderTimer: 0,
+          landed: false
+        };
+      }
+
+      function spawnWave() {
+        wave++;
+        const count = Math.min(npcCount + Math.floor((wave - 1) / 2), 9);
+        rivals.length = 0;
+        for (let index = 0; index < count; index++) {
+          const angle = index / count * Math.PI * 2 + wave * 0.37;
+          const radius = Math.max(width * 0.62, 520);
+          const position = {
+            x: clamp(player.x + Math.cos(angle) * radius, bounds.left + 60, bounds.right - 60),
+            y: clamp(player.y + Math.sin(angle) * radius, bounds.top + 60, bounds.bottom - 60)
+          };
+          const rival = makeRival(index, wave, position);
+          for (let attempt = 0; attempt < 8 && !canOccupy(rival, rival.x, rival.y); attempt++) {
+            rival.x = clamp(rival.x + (Math.random() - 0.5) * 180, bounds.left + 60, bounds.right - 60);
+            rival.y = clamp(rival.y + (Math.random() - 0.5) * 180, bounds.top + 60, bounds.bottom - 60);
+          }
+          rivals.push(rival);
+        }
+        status.textContent = `Wave ${wave}. ${count} foes are approaching.`;
+      }
+
+      function finishStage() {
+        playing = false;
+        keys.clear();
+        menu.hidden = false;
+        titleScreen.hidden = true;
+        difficultyScreen.hidden = true;
+        shopScreen.hidden = true;
+        stageScreen.hidden = false;
+        if (stageIndex < 2) {
+          stageTitle.textContent = `Level ${stageIndex + 1} survived`;
+          stageCopy.textContent = `Your ${coins} coins and weapon carry forward. Ready for Level ${stageIndex + 2}?`;
+          stageContinueButton.textContent = `ENTER LEVEL ${stageIndex + 2}`;
+          status.textContent = "Stage survived. Prepare for the next keep.";
+        } else {
+          stageTitle.textContent = "The keep stands";
+          stageCopy.textContent = `Campaign complete. You finished with ${coins} coins.`;
+          stageContinueButton.textContent = "PLAY AGAIN";
+          status.textContent = "Campaign complete.";
+          ended = true;
+        }
+      }
+
+      function canOccupy(entity, x, y) {
+        const half = entity.size / 2;
+        if (x - half < bounds.left || x + half > bounds.right || y - half < bounds.top || y + half > bounds.bottom) return false;
+        const overlaps = (obstacle) =>
+          x + half > obstacle.x && x - half < obstacle.x + obstacle.width &&
+          y + half > obstacle.y && y - half < obstacle.y + obstacle.height;
+        const overlapsCharacter = (other) =>
+          other !== entity && Math.abs(x - other.x) < (entity.size + other.size) / 2 &&
+          Math.abs(y - other.y) < (entity.size + other.size) / 2;
+        const blockedByPlayer = entity !== player && overlapsCharacter(player);
+        const blockedByRival = rivals.some((rival) => rival.hp > 0 && overlapsCharacter(rival));
+        const blockedByMerchant = merchants.some((merchant) => overlapsCharacter(merchant));
+        return !obstacles.some(overlaps) && (crate.broken || !overlaps(crate)) && !blockedByPlayer && !blockedByRival && !blockedByMerchant;
+      }
+
+      function moveEntity(entity, dx, dy) {
+        const nextX = clamp(entity.x + dx, bounds.left + entity.size / 2, bounds.right - entity.size / 2);
+        if (canOccupy(entity, nextX, entity.y)) entity.x = nextX;
+        const nextY = clamp(entity.y + dy, bounds.top + entity.size / 2, bounds.bottom - entity.size / 2);
+        if (canOccupy(entity, entity.x, nextY)) entity.y = nextY;
+      }
+
+      function updateSiege(dt) {
+        if (npcCount === 1) return;
+        siege.timer -= dt;
+        if (siege.mode === "warning") {
+          if (siege.timer > 0) return;
+          siege.mode = "impact";
+          siege.timer = 0.32;
+          const playerPosition = siege.axis === "x" ? player.x : player.y;
+          if (Math.abs(playerPosition - siege.center) < 48 && player.hurt <= 0) {
+            if (isBlocking()) {
+              player.blockFlash = 0.2;
+            } else {
+              player.hp -= Math.max(1, npcDamage - 1);
+              player.hurt = 0.32;
+              status.textContent = "A stone volley struck you. Keep moving!";
+            }
+          }
+          return;
+        }
+        if (siege.mode === "impact") {
+          if (siege.timer <= 0) {
+            siege.mode = "idle";
+            siege.timer = npcCount === 3 ? 3.4 : 5.6;
+          }
+          return;
+        }
+        if (siege.timer <= 0) {
+          siege.mode = "warning";
+          siege.timer = npcCount === 3 ? 0.82 : 1.12;
+          siege.axis = Math.random() < 0.5 ? "x" : "y";
+          const min = siege.axis === "x" ? bounds.left + 72 : bounds.top + 72;
+          const max = siege.axis === "x" ? bounds.right - 72 : bounds.bottom - 72;
+          siege.center = min + Math.random() * (max - min);
+          status.textContent = "Incoming stone volley! Leave the marked lane.";
+        }
+      }
+
+      function beginSwing() {
+        if (playing && !ended && player.swingCooldown <= 0 && !isBlocking()) {
+          player.swing = 0.28;
+          player.swingCooldown = weapon.cooldown;
+          player.swingHit = false;
+        }
+      }
+
+      function isBlocking() {
+        return hasShield && keys.has("f") && player.swing <= 0;
+      }
+
+      function onKeyDown(event) {
+        const key = event.key.toLowerCase();
+        if (["w", "a", "s", "d", " ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(key)) event.preventDefault();
+        if (key === "r" && ended) reset();
+        if (key === " " && !event.repeat) beginSwing();
+        if (key === "e" && !event.repeat) openShop();
+        if (key === "escape" && shopOpen) closeShop();
+        keys.add(key);
+      }
+
+      window.addEventListener("keydown", onKeyDown);
+      window.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+      window.addEventListener("blur", () => keys.clear());
+      canvas.addEventListener("pointerdown", () => canvas.focus());
+
+      function update(dt) {
+        if (!playing || ended) return;
+        elapsed += dt;
+        timeRemaining = Math.max(0, timeRemaining - dt);
+        if (timeRemaining <= 0) {
+          finishStage();
+          return;
+        }
+        player.hurt = Math.max(0, player.hurt - dt);
+        crate.flash = Math.max(0, crate.flash - dt);
+        player.swingCooldown = Math.max(0, player.swingCooldown - dt);
+        player.swing = Math.max(0, player.swing - dt);
+
+        let moveX = Number(keys.has("d") || keys.has("arrowright")) - Number(keys.has("a") || keys.has("arrowleft"));
+        let moveY = Number(keys.has("s") || keys.has("arrowdown")) - Number(keys.has("w") || keys.has("arrowup"));
+        if (moveX || moveY) {
+          const direction = normalized(moveX, moveY);
+          moveX = direction.x;
+          moveY = direction.y;
+          player.faceX = moveX;
+          player.faceY = moveY;
+          moveEntity(player, moveX * player.speed * dt, moveY * player.speed * dt);
+        }
+
+        rivals.forEach((rival) => {
+          if (rival.hp <= 0) return;
+          rival.hurt = Math.max(0, rival.hurt - dt);
+          rival.attackCooldown = Math.max(0, rival.attackCooldown - dt);
+          rival.attackTime = Math.max(0, rival.attackTime - dt);
+
+          const dx = player.x - rival.x;
+          const dy = player.y - rival.y;
+          const distance = Math.hypot(dx, dy) || 1;
+          const towardPlayer = { x: dx / distance, y: dy / distance };
+
+          if (rival.windup > 0) {
+            rival.windup -= dt;
+            if (rival.windup <= 0) {
+              rival.attackTime = 0.22;
+              rival.attackCooldown = rival.recovery;
+              rival.landed = true;
+              const currentDistance = distanceBetween(player, rival);
+              const aimDot = ((player.x - rival.x) / (currentDistance || 1)) * towardPlayer.x + ((player.y - rival.y) / (currentDistance || 1)) * towardPlayer.y;
+              if (currentDistance < rival.attackRange && aimDot > 0.15 && player.hurt <= 0) {
+                if (isBlocking()) {
+                  player.blockFlash = 0.2;
+                } else {
+                  player.hp -= npcDamage + rival.damageBonus;
+                  player.hurt = 0.32;
+                  moveEntity(player, towardPlayer.x * 34, towardPlayer.y * 34);
+                }
+              }
+            }
+          } else if (distance > rival.approachRange) {
+            moveEntity(rival, towardPlayer.x * rival.speed * dt, towardPlayer.y * rival.speed * dt);
+            rival.wanderTimer = 0;
+          } else if (rival.attackCooldown <= 0) {
+            rival.windup = rival.windupDuration;
+            rival.landed = false;
+          } else {
+            rival.wanderTimer -= dt;
+            if (rival.wanderTimer <= 0) {
+              rival.wanderAngle = Math.random() * Math.PI * 2;
+              rival.wanderTimer = 0.65 + Math.random() * 0.8;
+            }
+            moveEntity(rival, Math.cos(rival.wanderAngle) * rival.speed * 0.28 * dt, Math.sin(rival.wanderAngle) * rival.speed * 0.28 * dt);
+          }
+        });
+
+        if (player.swing > 0 && !player.swingHit) {
+          let targetRival = null;
+          let targetDistance = Infinity;
+          for (const rival of rivals) {
+            if (rival.hp <= 0) continue;
+            const toRivalX = rival.x - player.x;
+            const toRivalY = rival.y - player.y;
+            const distance = Math.hypot(toRivalX, toRivalY) || 1;
+            const facingDot = (toRivalX / distance) * player.faceX + (toRivalY / distance) * player.faceY;
+            if (distance < weapon.range && facingDot > 0.25 && distance < targetDistance) {
+              targetRival = rival;
+              targetDistance = distance;
+            }
+          }
+
+          if (targetRival) {
+            const toRivalX = targetRival.x - player.x;
+            const toRivalY = targetRival.y - player.y;
+            targetRival.hp -= weapon.damage;
+            targetRival.hurt = 0.24;
+            moveEntity(targetRival, toRivalX / targetDistance * 22, toRivalY / targetDistance * 22);
+            if (targetRival.hp <= 0) dropCoins(targetRival);
+            player.swingHit = true;
+          } else if (!crate.broken) {
+            const toCrateX = shieldPickup.x - player.x;
+            const toCrateY = shieldPickup.y - player.y;
+            const crateDistance = Math.hypot(toCrateX, toCrateY) || 1;
+            const crateFacingDot = (toCrateX / crateDistance) * player.faceX + (toCrateY / crateDistance) * player.faceY;
+            if (crateDistance < 94 && crateFacingDot > 0.25) {
+              crate.hp -= 1;
+              crate.flash = 0.2;
+              player.swingHit = true;
+              if (crate.hp <= 0) {
+                crate.broken = true;
+                shieldAvailable = true;
+                status.textContent = "Crate broken. Collect the shield in the center.";
+              } else {
+                status.textContent = `Crate damaged. ${crate.hp} sword swings left.`;
+              }
+            }
+          }
+        }
+
+        if (shieldAvailable && distanceBetween(player, shieldPickup) < 36) {
+          shieldAvailable = false;
+          hasShield = true;
+          status.textContent = "Shield collected. Hold F to block.";
+        }
+
+        for (let index = coinDrops.length - 1; index >= 0; index--) {
+          const drop = coinDrops[index];
+          if (distanceBetween(player, drop) < 32) {
+            coins += drop.value;
+            status.textContent = `Collected ${drop.value} coins. Purse: ${coins}.`;
+            coinDrops.splice(index, 1);
+          }
+        }
+
+        updateSiege(dt);
+
+        if (rivals.every((rival) => rival.hp <= 0)) {
+          if (waveBreak <= 0) {
+            waveBreak = 2.4;
+            status.textContent = `Wave ${wave} cleared. Next wave in ${waveBreak.toFixed(1)}s.`;
+          } else {
+            waveBreak -= dt;
+            if (waveBreak <= 0) spawnWave();
+            else status.textContent = `Wave ${wave} cleared. Next wave in ${waveBreak.toFixed(1)}s.`;
+          }
+        } else {
+          waveBreak = 0;
+        }
+
+        if (player.hp <= 0) {
+          ended = true;
+          result = "You were defeated.";
+          status.textContent = `${result} Press R to play again.`;
+        }
+        updateCamera();
+      }
+
+      function drawHealth(x, y, current, max, color, label) {
+        const barWidth = 128;
+        context.fillStyle = "#111914";
+        context.fillRect(x, y, barWidth, 9);
+        context.fillStyle = color;
+        context.fillRect(x, y, barWidth * Math.max(0, current / max), 9);
+        context.fillStyle = "#d8e1d4";
+        context.font = "12px ui-monospace, monospace";
+        context.fillText(label, x, y - 7);
+      }
+
+      function drawBlock(entity, color, highlight, facingX, facingY, isPlayer) {
+        const half = entity.size / 2;
+        context.save();
+        context.translate(entity.x, entity.y);
+        context.fillStyle = "#10181266";
+        context.beginPath();
+        context.ellipse(3, half + 8, half * 1.1, 7, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = entity.hurt > 0 ? "#fff3ce" : color;
+        context.fillRect(-half, -half, entity.size, entity.size);
+        context.fillStyle = highlight;
+        context.fillRect(-half + 4, -half + 4, entity.size - 8, 5);
+        context.fillStyle = "#142019";
+        context.fillRect(-half + 7, -half + 12, 5, 5);
+        context.fillRect(half - 12, -half + 12, 5, 5);
+        context.fillStyle = "#f1e7d3";
+        context.fillRect(-half + 8, half - 10, entity.size - 16, 3);
+        context.fillStyle = isPlayer ? "#d6bb78" : "#d1cbb4";
+        context.fillRect(-half + 5, -half + 10, entity.size - 10, 2);
+        context.fillStyle = isPlayer ? "#87373a" : "#48554d";
+        context.beginPath();
+        context.moveTo(-6, -half + 3);
+        context.quadraticCurveTo(1, -half - 11, 7, -half - 5);
+        context.lineTo(4, -half + 4);
+        context.closePath();
+        context.fill();
+        context.fillStyle = "#d6bb78";
+        context.fillRect(-2, 3, 4, 9);
+        context.fillRect(-6, 5, 12, 3);
+
+        if (isPlayer) {
+          const angle = Math.atan2(facingY, facingX);
+          context.rotate(angle);
+          if (entity.swing > 0) {
+            const progress = 1 - entity.swing / 0.28;
+            context.rotate(-0.95 + progress * 1.9);
+            context.fillStyle = "#493927";
+            context.fillRect(half - 5, -3, 10, 6);
+            if (weapon.name === "War Hammer") {
+              context.fillStyle = "#b7a16f";
+              context.fillRect(half + 4, -3, weapon.range - 53, 6);
+              context.fillStyle = "#8d9791";
+              context.fillRect(half + weapon.range - 54, -10, 12, 20);
+              context.fillStyle = "#d8d1b7";
+              context.fillRect(half + weapon.range - 54, -10, 12, 4);
+            } else {
+              context.fillStyle = "#f3d589";
+              context.fillRect(half + 1, -3, weapon.range - 42, 6);
+              context.fillStyle = "#dce6db";
+              context.fillRect(half + 19, -2, weapon.range - 59, 4);
+            }
+          } else {
+            context.fillStyle = "#d5dfd5";
+            context.fillRect(half - 1, -2, weapon.range - 60, 4);
+            context.fillStyle = "#594331";
+            context.fillRect(half - 5, -4, 8, 8);
+          }
+        }
+        context.restore();
+      }
+
+      function drawObstacles() {
+        obstacles.forEach((obstacle, index) => {
+          const inset = 6;
+          context.fillStyle = "#10181266";
+          context.beginPath();
+          context.ellipse(obstacle.x + obstacle.width / 2 + 3, obstacle.y + obstacle.height + 6, obstacle.width * 0.54, 8, 0, 0, Math.PI * 2);
+          context.fill();
+          context.fillStyle = index % 2 ? "#69716b" : "#74796e";
+          context.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+          context.strokeStyle = "#343d3a";
+          context.lineWidth = 2;
+          context.strokeRect(obstacle.x + 1, obstacle.y + 1, obstacle.width - 2, obstacle.height - 2);
+          context.fillStyle = "#a1a18b";
+          context.fillRect(obstacle.x + inset, obstacle.y + inset, obstacle.width - inset * 2, 5);
+          context.fillStyle = "#46514b";
+          context.fillRect(obstacle.x + inset, obstacle.y + obstacle.height - 12, obstacle.width - inset * 2, 5);
+          context.fillStyle = "#8b936f";
+          context.fillRect(obstacle.x + obstacle.width - 17, obstacle.y + 10, 5, 4);
+          context.strokeStyle = "#48514b";
+          context.beginPath();
+          context.moveTo(obstacle.x + obstacle.width * 0.36, obstacle.y + 15);
+          context.lineTo(obstacle.x + obstacle.width * 0.48, obstacle.y + obstacle.height * 0.48);
+          context.lineTo(obstacle.x + obstacle.width * 0.4, obstacle.y + obstacle.height - 8);
+          context.stroke();
+        });
+      }
+
+      function drawPennants() {
+        [bounds.left + 130, (bounds.left + bounds.right) / 2, bounds.right - 130].forEach((x, index) => {
+          context.fillStyle = "#b9aa7c";
+          context.fillRect(x - 2, 1, 4, 38);
+          context.fillStyle = index === 1 ? "#42574c" : "#87373a";
+          context.beginPath();
+          context.moveTo(x - 15, 4);
+          context.lineTo(x + 15, 4);
+          context.lineTo(x + 15, 25);
+          context.lineTo(x, 35);
+          context.lineTo(x - 15, 25);
+          context.closePath();
+          context.fill();
+          context.strokeStyle = "#d0b36b";
+          context.lineWidth = 2;
+          context.stroke();
+          context.fillStyle = "#d0b36b";
+          context.fillRect(x - 2, 9, 4, 14);
+          context.fillRect(x - 7, 14, 14, 4);
+        });
+      }
+
+      function drawMerchants() {
+        merchants.forEach((merchant) => {
+          context.fillStyle = "#251f19aa";
+          context.fillRect(merchant.x - 34, merchant.y - 48, 68, 16);
+          context.fillStyle = "#476456";
+          context.beginPath();
+          context.moveTo(merchant.x - 38, merchant.y - 46);
+          context.lineTo(merchant.x, merchant.y - 68);
+          context.lineTo(merchant.x + 38, merchant.y - 46);
+          context.closePath();
+          context.fill();
+          context.strokeStyle = "#c4a363";
+          context.lineWidth = 2;
+          context.stroke();
+          drawBlock(merchant, "#52786b", "#a7c69a", 0, 0, false);
+          drawShieldIcon(merchant.x, merchant.y - 30, 16, true);
+          context.textAlign = "center";
+          context.fillStyle = "#eee6d2";
+          context.font = "bold 10px ui-monospace, monospace";
+          context.fillText("SMITH", merchant.x, merchant.y - 40);
+          context.fillStyle = "#d6c58f";
+          context.fillText("E TO TRADE", merchant.x, merchant.y + 34);
+        });
+        context.textAlign = "left";
+      }
+
+      function drawCoinDrops() {
+        coinDrops.forEach((drop) => {
+          const bob = Math.sin(elapsed * 5 + drop.bob) * 3;
+          context.fillStyle = "#d9b85d";
+          context.beginPath();
+          context.arc(drop.x, drop.y + bob, 10, 0, Math.PI * 2);
+          context.fill();
+          context.strokeStyle = "#fff0a8";
+          context.lineWidth = 2;
+          context.stroke();
+          context.fillStyle = "#72501c";
+          context.font = "bold 9px ui-monospace, monospace";
+          context.textAlign = "center";
+          context.fillText(String(drop.value), drop.x, drop.y + bob + 3);
+        });
+        context.textAlign = "left";
+      }
+
+      function drawShieldIcon(x, y, size, active) {
+        context.save();
+        context.translate(x, y);
+        context.beginPath();
+        context.moveTo(0, -size / 2);
+        context.lineTo(size * 0.42, -size * 0.32);
+        context.lineTo(size * 0.34, size * 0.12);
+        context.lineTo(0, size / 2);
+        context.lineTo(-size * 0.34, size * 0.12);
+        context.lineTo(-size * 0.42, -size * 0.32);
+        context.closePath();
+        context.fillStyle = active ? "#65c7a3" : "#d5b96f";
+        context.strokeStyle = "#f0e4b8";
+        context.lineWidth = 2;
+        context.fill();
+        context.stroke();
+        context.restore();
+      }
+
+      function drawCrate() {
+        if (crate.broken) {
+          context.fillStyle = "#775335";
+          context.fillRect(crate.x + 5, crate.y + crate.height - 7, 18, 6);
+          context.fillRect(crate.x + crate.width - 24, crate.y + crate.height - 10, 19, 6);
+          if (shieldAvailable) {
+            context.fillStyle = "#d5b96f30";
+            context.beginPath();
+            context.arc(shieldPickup.x, shieldPickup.y, 24 + Math.sin(elapsed * 5) * 3, 0, Math.PI * 2);
+            context.fill();
+            drawShieldIcon(shieldPickup.x, shieldPickup.y, 28, false);
+            context.fillStyle = "#f2e7c7";
+            context.font = "11px ui-monospace, monospace";
+            context.textAlign = "center";
+            context.fillText("SHIELD", shieldPickup.x, shieldPickup.y - 25);
+            context.textAlign = "left";
+          }
+          return;
+        }
+
+        context.fillStyle = "#10181266";
+        context.beginPath();
+        context.ellipse(shieldPickup.x + 3, crate.y + crate.height + 6, 34, 8, 0, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = crate.flash > 0 ? "#d9a66b" : "#795335";
+        context.fillRect(crate.x, crate.y, crate.width, crate.height);
+        context.strokeStyle = "#c8a667";
+        context.lineWidth = 3;
+        context.strokeRect(crate.x + 1.5, crate.y + 1.5, crate.width - 3, crate.height - 3);
+        context.fillStyle = "#b7a16f";
+        context.fillRect(crate.x + 8, crate.y + 7, 5, crate.height - 14);
+        context.fillRect(crate.x + crate.width - 13, crate.y + 7, 5, crate.height - 14);
+        context.fillRect(crate.x + 8, crate.y + crate.height / 2 - 2, crate.width - 16, 4);
+        context.fillStyle = "#d8b47a";
+        const pipSize = 7;
+        for (let pip = 0; pip < 3; pip++) {
+          context.fillStyle = pip < crate.hp ? "#f0d58b" : "#533c2b";
+          context.fillRect(shieldPickup.x - 12 + pip * 10, crate.y - 12, pipSize, 5);
+        }
+      }
+
+      function drawSiege() {
+        if (siege.mode === "idle" || npcCount === 1) return;
+        const warning = siege.mode === "warning";
+        const halfWidth = warning ? 48 : 56;
+        context.save();
+        context.fillStyle = warning ? "#d5b96f30" : "#bb59476b";
+        context.strokeStyle = warning ? "#f0d58b" : "#e98564";
+        context.lineWidth = warning ? 2 : 4;
+        context.setLineDash(warning ? [9, 7] : []);
+        if (siege.axis === "x") {
+          context.fillRect(siege.center - halfWidth, bounds.top, halfWidth * 2, bounds.bottom - bounds.top);
+          context.strokeRect(siege.center - halfWidth, bounds.top, halfWidth * 2, bounds.bottom - bounds.top);
+          context.textAlign = "center";
+          context.font = "bold 12px ui-monospace, monospace";
+          context.fillText(warning ? "STONE VOLLEY" : "IMPACT", siege.center, bounds.top + 36);
+        } else {
+          context.fillRect(bounds.left, siege.center - halfWidth, bounds.right - bounds.left, halfWidth * 2);
+          context.strokeRect(bounds.left, siege.center - halfWidth, bounds.right - bounds.left, halfWidth * 2);
+          context.textAlign = "center";
+          context.font = "bold 12px ui-monospace, monospace";
+          context.fillText(warning ? "STONE VOLLEY" : "IMPACT", width / 2, siege.center - halfWidth + 18);
+        }
+        context.restore();
+      }
+
+      function draw() {
+        context.clearRect(0, 0, width, height);
+        context.fillStyle = "#303b38";
+        context.fillRect(0, 0, width, height);
+        context.save();
+        context.translate(-camera.x, -camera.y);
+        context.fillStyle = "#303b38";
+        context.fillRect(bounds.left - 40, bounds.top - 40, bounds.right - bounds.left + 80, bounds.bottom - bounds.top + 80);
+
+        context.save();
+        context.beginPath();
+        context.rect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
+        context.clip();
+        context.fillStyle = "#53615b";
+        context.fillRect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
+        const tileWidth = 64;
+        const tileHeight = 44;
+        let row = 0;
+        for (let y = bounds.top; y < bounds.bottom; y += tileHeight) {
+          const shift = row % 2 ? tileWidth / 2 : 0;
+          let column = 0;
+          for (let x = bounds.left - shift; x < bounds.right; x += tileWidth) {
+            const shade = (row + column) % 3;
+            context.fillStyle = shade === 0 ? "#68726b" : shade === 1 ? "#73766c" : "#5e6b65";
+            context.fillRect(x + 1, y + 1, tileWidth - 2, tileHeight - 2);
+            context.strokeStyle = "#46514d";
+            context.lineWidth = 2;
+            context.strokeRect(x + 1, y + 1, tileWidth - 2, tileHeight - 2);
+            context.fillStyle = "#ffffff0a";
+            context.fillRect(x + 4, y + 4, tileWidth - 8, 2);
+            column++;
+          }
+          row++;
+        }
+        context.strokeStyle = "#b4a270";
+        context.lineWidth = 2;
+        context.strokeRect(bounds.left + 18, bounds.top + 18, bounds.right - bounds.left - 36, bounds.bottom - bounds.top - 36);
+        context.restore();
+
+        context.fillStyle = "#343f3b";
+        context.fillRect(bounds.left - 40, bounds.top - 40, bounds.right - bounds.left + 80, 40);
+        context.fillRect(bounds.left - 40, bounds.bottom, bounds.right - bounds.left + 80, 40);
+        context.fillRect(bounds.left - 40, bounds.top, 40, bounds.bottom - bounds.top);
+        context.fillRect(bounds.right, bounds.top, 40, bounds.bottom - bounds.top);
+        context.fillStyle = "#46514d";
+        for (let x = bounds.left - 32; x < bounds.right; x += 48) {
+          context.fillRect(x, 0, 30, 16);
+          context.fillRect(x, bounds.bottom + 24, 30, 16);
+        }
+        for (let y = bounds.top + 8; y < bounds.bottom - 24; y += 48) {
+          context.fillRect(0, y, 16, 30);
+          context.fillRect(bounds.right + 24, y, 16, 30);
+        }
+        context.strokeStyle = "#94845c";
+        context.lineWidth = 2;
+        context.strokeRect(bounds.left, bounds.top, bounds.right - bounds.left, bounds.bottom - bounds.top);
+
+        drawPennants();
+        drawObstacles();
+        drawCrate();
+        drawCoinDrops();
+        drawMerchants();
+        drawSiege();
+        const activeRivals = rivals.filter((rival) => rival.hp > 0);
+        const totalRivalHealth = activeRivals.reduce((total, rival) => total + rival.hp, 0);
+        const totalRivalMaxHealth = rivals.reduce((total, rival) => total + rival.maxHp, 0);
+
+        activeRivals.forEach((rival) => {
+          context.fillStyle = "#1b2420";
+          context.font = "bold 10px ui-monospace, monospace";
+          context.textAlign = "center";
+          context.fillText(rival.role.toUpperCase(), rival.x, rival.y - rival.size / 2 - 8);
+          if (rival.windup > 0) {
+            context.strokeStyle = rival.role === "Brute" ? "#d96854" : "#f0c96b";
+            context.lineWidth = rival.role === "Brute" ? 4 : 3;
+            context.beginPath();
+            context.arc(rival.x, rival.y, rival.attackRange * 0.42 + Math.sin(elapsed * 30) * 3, 0, Math.PI * 2);
+            context.stroke();
+            context.fillStyle = "#f5d889";
+            context.font = "bold 12px ui-monospace, monospace";
+            context.fillText("!", rival.x, rival.y - rival.size / 2 - 20);
+          }
+          context.textAlign = "left";
+        });
+
+        drawBlock(player, "#d94d49", "#f47d69", player.faceX, player.faceY, true);
+        activeRivals.forEach((rival) => drawBlock(rival, rival.color, rival.highlight, -1, 0, false));
+        if (isBlocking()) {
+          drawShieldIcon(player.x + player.faceX * 27, player.y + player.faceY * 27, 25, true);
+        }
+        context.restore();
+
+        drawHealth(58, 75, player.hp, player.maxHp, "#e45e56", "YOU");
+        drawHealth(width - 186, 75, totalRivalHealth, totalRivalMaxHealth, "#dfb75c", `NPCS ${activeRivals.length}/${rivals.length}`);
+        context.textAlign = "center";
+        context.fillStyle = hasShield ? "#78c8a5" : "#d8e1d4";
+        context.font = "11px ui-monospace, monospace";
+        context.fillText(hasShield ? "SHIELD READY | F TO BLOCK" : shieldAvailable ? "SHIELD DROPPED" : "SHIELD IN CRATE", width / 2, 75);
+        context.fillStyle = "#eee6d2";
+        context.font = "bold 13px ui-monospace, monospace";
+        context.fillText(`LEVEL ${stageIndex + 1}  WAVE ${wave}  ${formatTime(timeRemaining)}`, width / 2, 104);
+        context.fillStyle = "#d9b85d";
+        context.fillText(`${coins} COINS  |  ${weapon.name.toUpperCase()}`, width / 2, 125);
+        context.textAlign = "left";
+
+        if (ended) {
+          context.fillStyle = "#111914bb";
+          context.fillRect(0, 0, width, height);
+          context.textAlign = "center";
+          context.fillStyle = result === "You win!" ? "#f2d17b" : "#f07d71";
+          context.font = "bold 42px Georgia, serif";
+          context.fillText(result, width / 2, height / 2 - 8);
+          context.fillStyle = "#e3e9df";
+          context.font = "14px ui-monospace, monospace";
+          context.fillText("Press R to retry this level", width / 2, height / 2 + 25);
+          context.textAlign = "left";
+        }
+      }
+
+      function frame(time) {
+        const dt = Math.min((time - lastTime) / 1000 || 0, 0.04);
+        lastTime = time;
+        update(dt);
+        draw();
+        requestAnimationFrame(frame);
+      }
+
+      status.textContent = "Choose Play to begin.";
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
